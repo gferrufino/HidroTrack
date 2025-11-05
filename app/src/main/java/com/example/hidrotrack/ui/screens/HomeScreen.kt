@@ -123,3 +123,118 @@ fun HomeScreen(
                     }
                 )
             }
+        ) { p ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(p)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isSaving) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
+                Text(
+                    text = "$todayCount / $goal vasos",
+                    style = TextStyle(
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold,
+                        brush = Brush.linearGradient(listOf(Color(0xFF4FC3F7), Color(0xFF0288D1)))
+                    )
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            if (todayCount > 0) {
+                                vm.removeOne()
+                                // haptic leve
+                                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            }
+                        },
+                        enabled = todayCount > 0
+                    ) { Text("-1") }
+
+                    Button(
+                        onClick = {
+                            vm.addOne()
+                            // haptic leve
+                            haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        }
+                    ) { Text("+1") }
+                }
+
+                Button(
+                    enabled = !isSaving,
+                    onClick = {
+                        scope.launch {
+                            isSaving = true
+                            try {
+                                vm.saveToday()
+                                snackbarHostState.showSnackbar("Cantidad de vasos guardada")
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    }
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Guardando...")
+                    } else {
+                        Text("Guardar")
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = reachedGoal,
+                    enter = fadeIn(animationSpec = tween(250)) + expandVertically(),
+                    exit = fadeOut(animationSpec = tween(200)) + shrinkVertically()
+                ) {
+                    Surface(
+                        tonalElevation = 2.dp,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                "¡Llegaste a la meta! Tómate una foto celebrando 🎉",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Button(
+                                onClick = {
+                                    val uri = com.example.hidrotrack.util.createImageUri(context)
+                                    if (uri != null) {
+                                        photoUri = uri
+                                        cameraLauncher.launch(uri)
+                                    } else {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("No se pudo abrir la cámara")
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Abrir cámara")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        ConfettiOverlay(
+            show = showConfetti,
+            onFinished = { showConfetti = false }
+        )
+    }
+}
