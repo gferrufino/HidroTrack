@@ -1,37 +1,25 @@
 package com.example.hidrotrack.data
 
-import android.content.Context
-import androidx.room.Room
-import com.example.hidrotrack.data.local.*
-import com.example.hidrotrack.data.prefs.UserPrefs
+import com.example.hidrotrack.data.local.WaterLog
+import com.example.hidrotrack.data.local.WaterLogDao
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
 
-class WaterRepository private constructor(context: Context) {
-    private val db = Room.databaseBuilder(context, AppDb::class.java, "hidrotack.db").build()
-    private val dao = db.waterLogDao()
-    val prefs = UserPrefs(context)
+class WaterRepository(private val dao: WaterLogDao) {
 
-    suspend fun getTodayCount(date: LocalDate = LocalDate.now()): Int =
-        dao.getByDate(date)?.count ?: 0
+    suspend fun getToday(date: LocalDate): WaterLog =
+        dao.getByDate(date) ?: WaterLog(date, 0).also { dao.upsert(it) }
 
-    suspend fun setTodayCount(count: Int, date: LocalDate = LocalDate.now()) {
+    suspend fun increment(date: LocalDate, delta: Int) {
+        val current = dao.getByDate(date) ?: WaterLog(date, 0)
+        val next = current.copy(count = (current.count + delta).coerceAtLeast(0))
+        dao.upsert(next)
+    }
+
+    suspend fun setCount(date: LocalDate, count: Int) {
         dao.upsert(WaterLog(date, count.coerceAtLeast(0)))
     }
 
-    suspend fun addGlass(n: Int = 1) {
-        val today = LocalDate.now()
-        val current = getTodayCount(today)
-        setTodayCount(current + n, today)
-    }
-
-    fun lastDays(days: Int = 7): Flow<List<WaterLog>> = flow { emit(dao.recent(days)) }
-
-    companion object {
-        @Volatile private var INSTANCE: WaterRepository? = null
-        fun get(context: Context) = INSTANCE ?: synchronized(this) {
-            INSTANCE ?: WaterRepository(context.applicationContext).also { INSTANCE = it }
-        }
-    }
+    // Aumentamos el default para ver más días en Historial
+    fun recent(limit: Int = 30): Flow<List<WaterLog>> = dao.recent(limit)
 }
