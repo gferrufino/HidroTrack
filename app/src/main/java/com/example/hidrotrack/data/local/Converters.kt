@@ -4,6 +4,9 @@ import androidx.room.TypeConverter
 import java.time.LocalDate
 
 class Converters {
-    @TypeConverter fun fromString(s: String?): LocalDate? = s?.let(LocalDate::parse)
-    @TypeConverter fun toString(d: LocalDate?): String? = d?.toString()
+    @TypeConverter
+    fun fromStringToLocalDate(value: String?): LocalDate? = value?.let { LocalDate.parse(it) }
+
+    @TypeConverter
+    fun fromLocalDateToString(date: LocalDate?): String? = date?.toString()
 }
